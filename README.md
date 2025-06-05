@@ -53,3 +53,22 @@ This project was enhanced using **artificial intelligence** at several levels:
 ```bash
 git clone https://github.com/your-username/sporting-booking-site.git
 cd sporting-booking-site
+
+
+---
+
+sporting-booking-site/
+│
+├── static/
+│   ├── styles.css       # Animated and responsive styles
+│   └── script.js        # Frontend logic and form submission
+│
+├── templates/
+│   └── index.html       # Main booking page
+│
+├── app.py               # Flask backend server
+├── bookings.db          # SQLite database file
+├── requirements.txt     # Python dependencies
+└── README.md            # Project documentation
+
+#####################fadybasem-SilentN0va#########################
