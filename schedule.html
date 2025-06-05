@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Booking Schedule</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .booked {
+            background-color: #ffcccc;
+        }
+        .available {
+            background-color: #ccffcc;
+        }
+        #uploadSection {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        #noDataMessage {
+            margin-top: 20px;
+            font-weight: bold;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Booking Schedule</h1>
+    <div>
+        <label for="filterDate">Filter by Date:</label>
+        <input type="date" id="filterDate" />
+        <button id="filterButton">Filter</button>
+    </div>
+
+    <div id="uploadSection">
+        <h3>Upload Updated Schedule File (CSV or Excel)</h3>
+        <input type="file" id="fileInput" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+        <button id="uploadButton">Upload</button>
+        <p id="uploadMessage"></p>
+        <a href="confirmed_reservations.csv" download id="downloadLink">Download Current Schedule CSV</a>
+    </div>
+
+    <div id="noDataMessage" style="display:none;">No schedule data available for the selected date.</div>
+
+    <table id="scheduleTable">
+        <thead>
+            <tr>
+                <th>Reservation ID</th>
+                <th>Stadium Name</th>
+                <th>Day</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Additional Time</th>
+                <th>Mobile Number</th>
+                <th>Team Name</th>
+                <th>Payment Method</th>
+                <th>Payment Name</th>
+                <th>Payment Image</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Schedule rows will be inserted here -->
+        </tbody>
+    </table>
+
+    <script>
+        async function fetchSchedule() {
+            const response = await fetch('http://127.0.0.1:5000/schedule');
+            if (!response.ok) {
+                alert('Failed to load schedule data');
+                return [];
+            }
+            const data = await response.json();
+            return data;
+        }
+
+        function renderSchedule(data, filterDate) {
+            const tbody = document.querySelector('#scheduleTable tbody');
+            const noDataMessage = document.getElementById('noDataMessage');
+            tbody.innerHTML = '';
+
+            const filteredData = filterDate
+                ? data.filter(item => item.Date === filterDate)
+                : data;
+
+            if (filteredData.length === 0) {
+                noDataMessage.style.display = 'block';
+            } else {
+                noDataMessage.style.display = 'none';
+            }
+
+            filteredData.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = item['Reservation ID'] ? 'booked' : 'available';
+
+                tr.innerHTML = `
+                    <td>${item['Reservation ID'] || ''}</td>
+                    <td>${item['Stadium Name'] || ''}</td>
+                    <td>${item['Day'] || ''}</td>
+                    <td>${item['Date'] || ''}</td>
+                    <td>${item['Time'] || ''}</td>
+                    <td>${item['Additional Time'] || ''}</td>
+                    <td>${item['Mobile Number'] || ''}</td>
+                    <td>${item['Team Name'] || ''}</td>
+                    <td>${item['Payment Method'] || ''}</td>
+                    <td>${item['Payment Name'] || ''}</td>
+                    <td>${item['Payment Image Path'] ? `<a href="${item['Payment Image Path']}" target="_blank">View</a>` : ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('filterButton').addEventListener('click', async () => {
+            const filterDate = document.getElementById('filterDate').value;
+            const data = await fetchSchedule();
+            renderSchedule(data, filterDate);
+        });
+
+        // Initial load without filter
+        fetchSchedule().then(data => renderSchedule(data, ''));
+
+        // Auto-refresh schedule every 30 seconds without filter
+        setInterval(async () => {
+            const filterDate = document.getElementById('filterDate').value;
+            const data = await fetchSchedule();
+            renderSchedule(data, filterDate);
+        }, 30000);
+
+        // Upload file handler
+        document.getElementById('uploadButton').addEventListener('click', async () => {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const uploadMessage = document.getElementById('uploadMessage');
+
+            if (!file) {
+                uploadMessage.textContent = 'Please select a file to upload.';
+                uploadMessage.style.color = 'red';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/upload_schedule', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    uploadMessage.textContent = 'File uploaded successfully!';
+                    uploadMessage.style.color = 'green';
+                    // Refresh schedule data
+                    const data = await fetchSchedule();
+                    renderSchedule(data, document.getElementById('filterDate').value);
+                } else {
+                    const errorData = await response.json();
+                    uploadMessage.textContent = 'Upload failed: ' + (errorData.error || 'Unknown error');
+                    uploadMessage.style.color = 'red';
+                }
+            } catch (error) {
+                uploadMessage.textContent = 'Upload failed: ' + error.message;
+                uploadMessage.style.color = 'red';
+            }
+        });
+    </script>
+</body>
+</html>
